@@ -253,10 +253,10 @@ from sklearn import svm
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from sklearn.metrics import mean_squared_error
 import random
+import scipy.stats as stats
 from bayes_opt import BayesianOptimization
 
 train_dates = random.sample(sorted(frames), len(frames.keys()))
-
 train_data = pd.concat([frames[date] for date in train_dates])[alpha_factors + ['Ret']]
 
 # Create interaction features
@@ -297,12 +297,34 @@ print(f'Best parameters for Lasso: {best_params_lasso}')
 print(f'Best parameters for Ridge: {best_params_ridge}')
 # print(f'Best parameters for SVR: {best_params_svr}')
 
-
+'''===================== Out Sample testing ===================''' 
 test_frames = {}
 for year in [2008,2009,2010]:
     fil = model_dir + "pandas-frames." + str(year) + ".pickle.bz2"
     test_frames.update(pickle.load( bz2.open( fil, "rb" ) ))
 
+test_dates = random.sample(sorted(test_frames), len(test_frames.keys()))
+test_data = pd.concat([test_frames[date] for date in test_dates])[alpha_factors + ["Ret"]]
+
+# Create interaction features for the test data
+X_test_poly = poly.transform(test_data.iloc[:, :-1])
+y_test = test_data['Ret']
+
+# Train Lasso with the best parameters
+model_lasso = Lasso(alpha=best_params_lasso['alpha'])
+model_lasso.fit(X_train_poly, train_data['Ret'])
+# Predict on the test set and calculate MSE
+predictions_lasso = model_lasso.predict(X_test_poly)
+mse_lasso = mean_squared_error(y_test, predictions_lasso)
+print(f'MSE for Lasso: {mse_lasso}')
+
+# Train Ridge with the best parameters
+model_ridge = Ridge(alpha=best_params_ridge['alpha'])
+model_ridge.fit(X_train_poly, train_data['Ret'])
+# Predict on the test set and calculate MSE
+predictions_ridge = model_ridge.predict(X_test_poly)
+mse_ridge = mean_squared_error(y_test, predictions_ridge)
+print(f'MSE for Ridge: {mse_ridge}')
 
 ### Problem 2. 
 '''
